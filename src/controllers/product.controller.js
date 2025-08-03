@@ -41,7 +41,7 @@ export const createProduct = async (req, res) => {
   }
 };
 
-// 👉 GET /api/products
+// 👉 GET All
 export const getAllProducts = async (req, res) => {
   try {
     const products = await prisma.product.findMany({
@@ -62,6 +62,45 @@ export const getAllProducts = async (req, res) => {
     return errorResponse(
       res,
       "Get Product failed",
+      { error: error.message },
+      500
+    );
+  }
+};
+
+//get product by inventortid
+export const getProductByInventoryID = async (req, res) => {
+  try {
+    const { id } = req.params; // ✅ Ambil ID dari parameter URL
+    const product = await prisma.product.findMany({
+      where: { inventoryId: id },
+    });
+
+    if (!product || product.length === 0) {
+      return errorResponse(
+        res,
+        "No products found for this inventory",
+        null,
+        404
+      );
+    }
+
+    // ✅ Buat URL gambar lengkap
+    const base = `${req.protocol}://${req.get("host")}`;
+    const productWithImageUrl = product.map((p) => ({
+      ...p,
+      image: p.image ? `${base}${p.image}` : null,
+    }));
+
+    return successResponse(
+      res,
+      "Get product by id successful",
+      productWithImageUrl
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      "Get product failed",
       { error: error.message },
       500
     );

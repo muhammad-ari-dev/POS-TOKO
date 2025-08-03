@@ -2,6 +2,8 @@
 import prisma from "../config/prisma.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { successResponse, errorResponse } from "../utils/response.js";
+import cookieOptions from "../utils/cookieOptions.js";
 
 // ENV
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
@@ -12,8 +14,7 @@ export const register = async (req, res) => {
 
   // Cek jika email sudah digunakan
   const existed = await prisma.user.findUnique({ where: { email } });
-  if (existed)
-    return res.status(400).json({ message: "Email sudah terdaftar" });
+  if (existed) return errorResponse(res, "Email is already in use", null, 400);
 
   // Hash password sebelum simpan
   const hashed = await bcrypt.hash(password, 10);
@@ -27,9 +28,10 @@ export const register = async (req, res) => {
     },
   });
 
-  res.status(201).json({
-    message: "Register berhasil",
-    user: { id: user.id, name: user.name, email: user.email },
+  return successResponse(res, "Register successful", {
+    id: user.id,
+    name: user.name,
+    email: user.email,
   });
 };
 
@@ -39,28 +41,30 @@ export const login = async (req, res) => {
 
   // Cari user
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return res.status(401).json({ message: "Email tidak ditemukan" });
+  if (!user) return errorResponse(res, 'email tidak ditemukan', null, 401);
+
 
   // Cocokkan password
   const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ message: "Password salah" });
+  if (!match) return errorResponse(res, 'Password salah', null, 401);
+
 
   // Buat JWT Token
   const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "1d" });
 
-  // Simpan token di cookie
-  res.cookie("token", token, {
-    httpOnly: true, // Tidak bisa diakses oleh JavaScript di browser
-    secure: false, // true kalau pakai HTTPS
-    sameSite: "strict", // Hanya bisa dikirim dari origin yang sama
-    maxAge: 24 * 60 * 60 * 1000, // 1 hari
+  res.cookie("token", token, cookieOptions(req)); // save token in cookie
+  return successResponse(res, "Login successful", {
+    userId: user.id,
+    email: email,
+    token: token,
   });
-
-  res.json({ message: "Login berhasil" });
 };
 
 // 👉 Logout User
 export const logout = (req, res) => {
-  res.clearCookie("token");
-  res.json({ message: "Logout berhasil" });
+  res.clearCookie("token", {
+    ...cookieOptions(req),
+    maxAge: undefined, // override maxAge biar cookie benar-benar terhapus
+  });
+  return successResponse(res, "Logout successful");
 };

@@ -9,11 +9,12 @@ import {
 import { verifyToken } from "../middlewares/verifyToken.js";
 
 const router = express.Router();
+router.use(verifyToken);
 
-router.get("/", verifyToken, getInventories);
-router.get("/:id", verifyToken, getInventory);
-router.post("/", verifyToken, createInventory);
-router.put("/:id", verifyToken, updateInventory);
-router.delete("/:id", verifyToken, deleteInventory);
+router.get("/", getInventories);
+router.get("/:id", getInventory);
+router.post("/", createInventory);
+router.put("/:id", updateInventory);
+router.delete("/:id", deleteInventory);
 
 export default router;

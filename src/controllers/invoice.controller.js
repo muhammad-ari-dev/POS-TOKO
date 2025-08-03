@@ -1,122 +1,84 @@
 import prisma from "../config/prisma.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 
-// 👉 CREATE Invoice (checkout)
-export const createInvoice = async (req, res) => {
-  try {
-    const { email, name, phone, items, total } = req.body;
+export const Checkout = async (req, res) => {
+  const { email, name, phone, date } = req.body;
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        email,
-        name,
-        phone,
-        items: JSON.stringify(items), // simpan sebagai string
-        total: parseFloat(total),
-        date: new Date(),
-        userId: req.user.id,
-      },
-    });
+  // get cart current user logged in
+  const carts = await prisma.cart.findMany({
+    where: { userId: req.user.userId },
+    include: { product: true }
+  });
 
-    return successResponse(res, "Invoice berhasil dibuat", {
-      ...invoice,
-      items: JSON.parse(invoice.items), // ✅ Parse sebelum dikirim
-    });
-  } catch (error) {
-    return errorResponse(
-      res,
-      "Gagal membuat invoice",
-      { error: error.message },
-      500
-    );
+  if (carts.length === 0) {
+    return res.status(400).json({ error: "Cart is empty" });
   }
-};
 
-// 👉 GET Invoice berdasarkan email
-export const getInvoiceByEmail = async (req, res) => {
-  try {
-    const { email } = req.params;
+  const items = carts.map(c => `${c.product.name} x ${c.quantity}`).join(', ');
+  const total = carts.reduce((sum, item) => sum + item.total, 0);
 
-    const invoices = await prisma.invoice.findMany({
-      where: { email },
-      orderBy: { date: "desc" },
-    });
-
-    if (invoices.length === 0) {
-      return errorResponse(
-        res,
-        "Invoice tidak ditemukan untuk email tersebut",
-        null,
-        404
-      );
+  const invoice = await prisma.invoice.create({
+    data: {
+      email,
+      name,
+      phone,
+      date: new Date(date),
+      items,
+      total,
+      userId: req.user.id
     }
+  });
 
-    const result = invoices.map((inv) => ({
-      ...inv,
-      items: JSON.parse(inv.items), // ✅ Parse sebelum dikirim
-    }));
+  // Hapus cart hanya milik user ini
+  await prisma.cart.deleteMany({
+    where: { userId: req.user.userId }
+  });
 
-    return successResponse(
-      res,
-      "Berhasil mengambil invoice berdasarkan email",
-      result
-    );
-  } catch (error) {
-    return errorResponse(
-      res,
-      "Gagal mengambil invoice",
-      { error: error.message },
-      500
-    );
-  }
-};
+  return successResponse(res, 'Checkout Successful', invoice);
 
-// 👉 GET Semua invoice (admin)
-export const getAllInvoices = async (req, res) => {
+}
+
+// Get all invoices
+export const getAllinvoice = async (req, res) => {
   try {
-    const invoices = await prisma.invoice.findMany({
-      orderBy: { date: "desc" },
-    });
-
-    const result = invoices.map((inv) => ({
-      ...inv,
-      items: JSON.parse(inv.items), // ✅ Parse sebelum dikirim
-    }));
-
-    return successResponse(res, "Berhasil mengambil semua invoice", result);
-  } catch (error) {
-    return errorResponse(
-      res,
-      "Gagal mengambil invoice",
-      { error: error.message },
-      500
-    );
+    const data = await prisma.invoice.findMany();
+    return successResponse(res, 'Get all invoices', data );
+  } catch (err) {
+    return errorResponse(res, 'Failed get Invoice');
   }
-};
+}
 
-// 👉 GET Detail invoice by ID
-export const getInvoiceById = async (req, res) => {
+
+// Get invoice by ID
+export const getInvoicebyId = async (req, res) => {
   try {
-    const { id } = req.params;
-
     const invoice = await prisma.invoice.findUnique({
-      where: { id: parseInt(id) }, // ✅ parseInt karena ID Int auto-increment
+      where: { id: req.params.id }
     });
 
     if (!invoice) {
-      return errorResponse(res, "Invoice tidak ditemukan", null, 404);
+      return errorResponse(res, 'Invoice not found');
+
     }
 
-    return successResponse(res, "Berhasil mengambil detail invoice", {
-      ...invoice,
-      items: JSON.parse(invoice.items), // ✅ Parse sebelum dikirim
-    });
-  } catch (error) {
-    return errorResponse(
-      res,
-      "Gagal mengambil invoice",
-      { error: error.message },
-      500
-    );
+    return successResponse(res, 'Get invoice by ID successful', invoice );
+
+  } catch (err) {
+    return errorResponse(res, 'get invoice by id fail', { error: err.message }, 500);
   }
-};
+}
+
+// Get invoice by user email
+export const getInvoicebyuseremail = async (req, res) => {
+  try {
+    const invoices = await prisma.invoice.findMany({
+      where: { email: req.params.email }
+    });
+
+    return successResponse(res, 'Get invoice by ID successful', invoices);
+
+  } catch (err) {
+    return errorResponse(res, 'get invoice by email fail', { error: err.message }, 500);
+  }
+}
+

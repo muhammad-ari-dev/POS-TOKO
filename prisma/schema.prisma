@@ -22,6 +22,7 @@ model User {
   password String
   createdAt DateTime @default(now())
   invoices Invoice[]
+  carts    Cart[]
 }
 
 model Inventory {
@@ -42,20 +43,32 @@ model Product {
   description String
   inventory   Inventory @relation(fields: [inventoryId], references: [id])
   inventoryId String
+  carts       Cart[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
+model Cart {
+  id        String   @id @default(uuid())
+  productId String
+  quantity  Int
+  total     Int
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+
 model Invoice {
-  id      Int      @id @default(autoincrement())
+  id      String      @id @default(uuid())
   email   String
   name    String
   phone   String
-  items   String   // JSON string
-  total   Decimal
+  items   String   
+  total   Int
   date    DateTime @default(now())
-  userId  String
-  user    User     @relation(fields: [userId], references: [id])
+  userId  String?
+  user    User?     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

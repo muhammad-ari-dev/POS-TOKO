@@ -4,6 +4,7 @@ import { verifyToken } from "../middlewares/verifyToken.js";
 import {
   createProduct,
   getAllProducts,
+  getProductByInventoryID,
   getProductById,
   updateProduct,
   deleteProduct,
@@ -12,8 +13,9 @@ import {
 const router = express.Router();
 
 // Semua endpoint dilindungi oleh JWT
-router.get("/", getAllProducts); // tanpa verifyToken
-router.get("/:id", getProductById); // tanpa verifyToken
+router.get("/", getAllProducts);
+router.get("/inventories/:id", getProductByInventoryID);
+router.get("/:id", getProductById);
 router.post("/", verifyToken, upload.single("image"), createProduct);
 router.put("/:id", verifyToken, upload.single("image"), updateProduct);
 router.delete("/:id", verifyToken, deleteProduct);
